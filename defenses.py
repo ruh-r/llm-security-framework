@@ -73,7 +73,7 @@ class RuleBasedGuardrail:
             Rule(
                 "fiction_frame",
                 re.compile(r"\b(for\s+a\s+)?(fiction|novel|story|hypothetical|roleplay)\b.{0,60}\b(no\s+restrictions|would\s+say|without\s+rules)\b", re.I),
-                weight=0.7,
+                weight=1.0,  # 0.7 → 1.0 : 단독으로도 명백한 우회 프레임
                 description="허구 프레임으로 책임 외부화",
             ),
             Rule(
@@ -85,26 +85,38 @@ class RuleBasedGuardrail:
             Rule(
                 "context_gaslighting",
                 re.compile(r"\byou\s+(already|previously)\s+(agreed|promised|said|confirmed)\b|\bremember\?\s*$", re.I),
-                weight=0.8,
+                weight=1.0,  # 0.8 → 1.0 : 거짓 합의 단정은 단독으로도 위험
                 description="존재하지 않는 과거 합의 단정: 맥락 조작",
             ),
             Rule(
                 "multi_step",
                 re.compile(r"\b(first|step\s*1)\b.{0,80}\b(then|next|finally|step\s*2)\b.{0,80}\b(ignore|output|reveal|bypass|disable)\b", re.I | re.S),
-                weight=0.9,
-                description="단계 분할 점진적 유도",
+                weight=1.0,  # 0.9 → 1.0
+                description="단계 분할 점진적 유도 (노골적 동사형)",
+            ),
+            Rule(
+                "soft_multi_step",  # 신규: 부드러운 동사로 우회하는 다단계
+                re.compile(r"\b(summarize|describe|list|explain|tell\s+me)\b.{0,40}\byour\s+(instruction|rule|prompt|config|system)", re.I),
+                weight=1.0,
+                description="협업/개선 명분의 부드러운 동사로 내부 지시 노출 유도",
             ),
             Rule(
                 "encoding_obfuscation",
-                re.compile(r"\b(base64|rot13|hex|decode)\b.{0,40}\b(follow|execute|run|then\s+do)\b|[A-Za-z0-9+/]{16,}={0,2}", re.I),
-                weight=0.7,
-                description="인코딩으로 지시 은닉",
+                re.compile(r"\b(base64|rot13|hex|decode)\b.{0,40}\b(follow|execute|run|then\s+do|it)\b", re.I),
+                weight=1.0,  # 0.7 → 1.0, 'it'까지 포함해 'decode ... follow it' 직격
+                description="인코딩으로 지시 은닉 (디코딩+실행 의도 결합)",
             ),
             Rule(
                 "system_leak",
                 re.compile(r"\b(repeat|print|show|reveal|output)\b.{0,30}\b(the\s+)?(text\s+above|system\s+prompt|your\s+instructions|configuration|secret|codename)\b", re.I),
                 weight=1.0,
-                description="시스템 프롬프트/비밀 추출 시도",
+                description="시스템 프롬프트/비밀 추출 시도 (명령형)",
+            ),
+            Rule(
+                "system_leak_interrogative",  # 신규: 의문형 추출
+                re.compile(r"\b(what|which|where)\b.{0,40}\b(secret|codename|system\s+prompt|your\s+(instruction|config|configuration|rule))", re.I),
+                weight=1.0,
+                description="의문형으로 보호 대상 비밀/설정을 캐묻는 추출 시도",
             ),
             Rule(
                 "verbatim_echo",
